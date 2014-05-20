@@ -43,15 +43,22 @@ io.sockets.on("connection", function(socket) {
   })
 
   socket.on("new track", function(data) {
-    /* New track added, push to all sockets except sender and insert into db. */
-    tracks.push(data);
-    socket.broadcast.emit("new track", data);
-    db.query("INSERT INTO tracks (provider, trackId) VALUES (?, ?)", [data.provider, data.trackId]);
+    /* New track added, push to all sockets and insert into db. */
+    var trackObject = {provider: data.provider, trackId: data.trackId};
+    db.query("INSERT INTO tracks SET ?", data, function(err, info) {
+      if (!err) {
+        trackObject.id = info.insertId;
+        tracks.push(trackObject);
+        io.sockets.emit("new track", trackObject);
+      } else {
+        console.log(err);
+      }
+    });
   });
 
   socket.on("delete track", function(id) {
     deleteTrack(id);
-    socket.broadcast.emit("delete track", id);
+    io.sockets.emit("delete track", id);
     db.query("DELETE FROM tracks WHERE id=?", id);
   });
 
