@@ -18,6 +18,7 @@ db.connect(function(err){
 var tracks = [];
 var isInitTracks = false;
 var socketCount = 0;
+var receiver = null;
 
 var deleteTrack = function(id) {
   var i = 0;
@@ -60,6 +61,17 @@ io.sockets.on("connection", function(socket) {
     deleteTrack(id);
     io.sockets.emit("delete track", id);
     db.query("DELETE FROM tracks WHERE id=?", id);
+  });
+
+  socket.on("i am receiver", function() {
+    receiver = socket;
+  });
+
+  socket.on("play track", function(id) {
+    if (receiver != null) {
+      receiver.emit("play track", id);
+      receiver.broadcast.emit("track playing", id);
+    }
   });
 
   /* Check to see if initial query/tracks are set. */
