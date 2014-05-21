@@ -40,14 +40,14 @@ io.sockets.on("connection", function(socket) {
       io.sockets.emit("receiver disconnected");
     } else {
       clientsCount--;
-      io.sockets.emit("users connected", clientsCount);
+      io.sockets.emit("clients connected", clientsCount);
     }
   });
   
   socket.on("hello", function() {
     clientsCount++;
     /* Tell all sockets how many are connected. */
-    io.sockets.emit("users connected", clientsCount);
+    io.sockets.emit("clients connected", clientsCount);
   });
 
   socket.on("new track", function(data) {
