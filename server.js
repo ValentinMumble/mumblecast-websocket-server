@@ -17,7 +17,7 @@ db.connect(function(err){
 
 var tracks = [];
 var isInitTracks = false;
-var socketCount = 0;
+var clientsCount = 0;
 var receiver = null;
 
 var deleteTrack = function(id) {
@@ -33,20 +33,27 @@ var deleteTrack = function(id) {
 };
 
 io.sockets.on("connection", function(socket) {
-  socketCount++;
-
-  /* Tell all sockets how many are connected. */
-  io.sockets.emit("users connected", socketCount);
-
+  
   socket.on("disconnect", function() {
-    socketCount--;
-    io.sockets.emit("users connected", socketCount);
-  })
+    if (socket == receiver) {
+      receiver = null;
+      io.sockets.emit("receiver disconnected");
+    } else {
+      clientsCount--;
+      io.sockets.emit("users connected", clientsCount);
+    }
+  });
+  
+  socket.on("hello", function() {
+    clientsCount++;
+    /* Tell all sockets how many are connected. */
+    io.sockets.emit("users connected", clientsCount);
+  });
 
   socket.on("new track", function(data) {
     /* New track added, push to all sockets and insert into db. */
     var trackObject = {provider: data.provider, trackId: data.trackId};
-    db.query("INSERT INTO tracks SET ?", data, function(err, info) {
+    db.query("INSERT INTO tracks SET ?", trackObject, function(err, info) {
       if (!err) {
         trackObject.id = info.insertId;
         tracks.push(trackObject);
@@ -58,13 +65,19 @@ io.sockets.on("connection", function(socket) {
   });
 
   socket.on("delete track", function(id) {
-    deleteTrack(id);
-    io.sockets.emit("delete track", id);
-    db.query("DELETE FROM tracks WHERE id=?", id);
+    db.query("DELETE FROM tracks WHERE id=?", id, function(err, info) {
+      if (!err) {
+        deleteTrack(id);
+        io.sockets.emit("delete track", id);
+      } else {
+        console.log(err);
+      }
+    });
   });
 
   socket.on("i am receiver", function() {
     receiver = socket;
+    receiver.broadcast.emit("receiver connected");
   });
 
   socket.on("play track", function(id) {
