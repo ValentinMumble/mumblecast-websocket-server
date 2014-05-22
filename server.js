@@ -20,16 +20,19 @@ var isInitTracks = false;
 var clientsCount = 0;
 var receiver = null;
 
-var deleteTrack = function(id) {
-  var i = 0;
-  while (i < tracks.length) {
+var indexOfTrack = function(id) {
+  for (var i = 0; i < tracks.length; i++) {
     if (tracks[i].id == id) {
-      tracks.splice(i, 1);
-      return true;
+      return i;
     }
-    i++;
   }
-  return false;
+  return -1;
+};
+
+var deleteTrack = function(id) {
+  var i = indexOfTrack(id);
+  if (i) tracks.splice(i, 1);
+  return i;
 };
 
 io.sockets.on("connection", function(socket) {
@@ -83,8 +86,11 @@ io.sockets.on("connection", function(socket) {
   socket.on("play track", function(id) {
     if (receiver != null) {
       receiver.emit("play track", id);
-      receiver.broadcast.emit("track playing", id);
     }
+  });
+  
+  socket.on("track playing", function(id) {
+    socket.broadcast.emit("track playing", id);
   });
 
   /* Check to see if initial query/tracks are set. */
