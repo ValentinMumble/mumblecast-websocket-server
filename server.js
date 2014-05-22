@@ -36,6 +36,9 @@ var deleteTrack = function(id) {
 };
 
 io.sockets.on("connection", function(socket) {
+
+  clientsCount++;
+  io.sockets.emit("clients connected", clientsCount);
   
   socket.on("disconnect", function() {
     if (socket == receiver) {
@@ -45,12 +48,6 @@ io.sockets.on("connection", function(socket) {
       clientsCount--;
       io.sockets.emit("clients connected", clientsCount);
     }
-  });
-  
-  socket.on("hello", function() {
-    clientsCount++;
-    /* Tell all sockets how many are connected. */
-    io.sockets.emit("clients connected", clientsCount);
   });
 
   socket.on("new track", function(data) {
@@ -80,7 +77,9 @@ io.sockets.on("connection", function(socket) {
 
   socket.on("i am receiver", function() {
     receiver = socket;
+    clientsCount--;
     receiver.broadcast.emit("receiver connected");
+    receiver.broadcast.emit("clients connected", clientsCount);
   });
 
   socket.on("play track", function(id) {
@@ -93,7 +92,7 @@ io.sockets.on("connection", function(socket) {
     socket.broadcast.emit("track playing", id);
   });
 
-  /* Check to see if initial query/tracks are set. */
+  /* Check if initial query/tracks are set. */
   if (!isInitTracks) {
     /* Initial app start, run db query. */
     db.query("SELECT * FROM tracks")
