@@ -19,6 +19,7 @@ var tracks = [];
 var isInitTracks = false;
 var clientsCount = 0;
 var receiver = null;
+var current = {index: null};
 
 var indexOfTrack = function(id) {
   for (var i = 0; i < tracks.length; i++) {
@@ -39,10 +40,12 @@ io.sockets.on("connection", function(socket) {
 
   clientsCount++;
   io.sockets.emit("clients connected", clientsCount);
+  if (current.index != null) io.sockets.emit("track playing", current.index);
   
   socket.on("disconnect", function() {
     if (socket == receiver) {
       receiver = null;
+      current.index = null;
       io.sockets.emit("receiver disconnected");
     } else {
       clientsCount--;
@@ -89,7 +92,8 @@ io.sockets.on("connection", function(socket) {
   });
   
   socket.on("track playing", function(id) {
-    socket.broadcast.emit("track playing", id);
+    current.index = id;
+    socket.broadcast.emit("track playing", current.index);
   });
 
   /* Check if initial query/tracks are set. */
