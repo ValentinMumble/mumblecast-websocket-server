@@ -42,6 +42,7 @@ io.sockets.on("connection", function(socket) {
   io.sockets.emit("clients connected", clientsCount);
   if (current.index != null) io.sockets.emit("track playing", current.index);
   
+  /* When a socket disconnects. */
   socket.on("disconnect", function() {
     if (socket == receiver) {
       receiver = null;
@@ -53,8 +54,8 @@ io.sockets.on("connection", function(socket) {
     }
   });
 
+  /* When a client submits a valid track. */
   socket.on("new track", function(data) {
-    /* New track added, push to all sockets and insert into db. */
     var trackObject = {provider: data.provider, trackId: data.trackId};
     db.query("INSERT INTO tracks SET ?", trackObject, function(err, info) {
       if (!err) {
@@ -67,6 +68,7 @@ io.sockets.on("connection", function(socket) {
     });
   });
 
+  /* When a client deletes a track. */
   socket.on("delete track", function(id) {
     db.query("DELETE FROM tracks WHERE id=?", id, function(err, info) {
       if (!err) {
@@ -78,6 +80,7 @@ io.sockets.on("connection", function(socket) {
     });
   });
 
+  /* When the receiver introduces itself. */
   socket.on("i am receiver", function() {
     receiver = socket;
     clientsCount--;
@@ -85,12 +88,27 @@ io.sockets.on("connection", function(socket) {
     receiver.broadcast.emit("clients connected", clientsCount);
   });
 
+  /* When a client wants to play a track. */
   socket.on("play track", function(id) {
-    if (receiver != null) {
-      receiver.emit("play track", id);
-    }
+    if (receiver != null) receiver.emit("play track", id);
+  });
+
+  /* When a client wants to pause the current track. */
+  socket.on("pause", function() {
+    if (receiver != null) receiver.emit("pause");
+  });
+
+  /* When the receiver notifies that the current track is paused. */
+  socket.on("paused", function() {
+    socket.broadcast.emit("paused");
+  });
+
+  /* When the receiver notifies that the current track is unpaused. */
+  socket.on("unpaused", function() {
+    socket.broadcast.emit("unpaused");
   });
   
+  /* When the receiver notifies that this track is playing. */
   socket.on("track playing", function(id) {
     current.index = id;
     socket.broadcast.emit("track playing", current.index);
