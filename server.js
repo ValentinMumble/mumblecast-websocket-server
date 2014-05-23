@@ -23,9 +23,7 @@ var current = {index: null};
 
 var indexOfTrack = function(id) {
   for (var i = 0; i < tracks.length; i++) {
-    if (tracks[i].id == id) {
-      return i;
-    }
+    if (tracks[i].id == id) return i;
   }
   return -1;
 };
@@ -42,6 +40,21 @@ io.sockets.on("connection", function(socket) {
   io.sockets.emit("clients connected", clientsCount);
   if (current.index != null) io.sockets.emit("track playing", current.index);
   
+  /* Check if initial query/tracks are set. */
+  if (!isInitTracks) {
+    /* Initial app start, run db query. */
+    db.query("SELECT * FROM tracks")
+    .on("result", function(data){
+      tracks.push(data);
+    })
+    .on("end", function(){
+      socket.emit("initial tracks", tracks);
+    });
+    isInitTracks = true;
+  } else {
+    socket.emit("initial tracks", tracks);
+  }
+  
   /* When a socket disconnects. */
   socket.on("disconnect", function() {
     if (socket == receiver) {
@@ -53,6 +66,8 @@ io.sockets.on("connection", function(socket) {
       io.sockets.emit("clients connected", clientsCount);
     }
   });
+  
+  /* ------ Client { ------ */
 
   /* When a client submits a valid track. */
   socket.on("new track", function(data) {
@@ -80,14 +95,6 @@ io.sockets.on("connection", function(socket) {
     });
   });
 
-  /* When the receiver introduces itself. */
-  socket.on("i am receiver", function() {
-    receiver = socket;
-    clientsCount--;
-    receiver.broadcast.emit("receiver connected");
-    receiver.broadcast.emit("clients connected", clientsCount);
-  });
-
   /* When a client wants to play a track. */
   socket.on("play track", function(id) {
     if (receiver != null) receiver.emit("play track", id);
@@ -96,6 +103,28 @@ io.sockets.on("connection", function(socket) {
   /* When a client wants to pause the current track. */
   socket.on("pause", function() {
     if (receiver != null) receiver.emit("pause");
+  });
+  
+  /* When a client wants to play the next track. */
+  socket.on("next", function() {
+    if (receiver != null) receiver.emit("next");
+  });
+  
+  /* When a client wants to play the previous track. */
+  socket.on("previous", function() {
+    if (receiver != null) receiver.emit("previous");
+  });
+  
+  /* ------ } Client ------ */
+  
+  /* ------ Receiver { ------ */
+  
+  /* When the receiver introduces itself. */
+  socket.on("i am receiver", function() {
+    receiver = socket;
+    clientsCount--;
+    receiver.broadcast.emit("receiver connected");
+    receiver.broadcast.emit("clients connected", clientsCount);
   });
 
   /* When the receiver notifies that the current track is paused. */
@@ -113,20 +142,6 @@ io.sockets.on("connection", function(socket) {
     current.index = id;
     socket.broadcast.emit("track playing", current.index);
   });
-
-  /* Check if initial query/tracks are set. */
-  if (!isInitTracks) {
-    /* Initial app start, run db query. */
-    db.query("SELECT * FROM tracks")
-    .on("result", function(data){
-      tracks.push(data);
-    })
-    .on("end", function(){
-      /* Only emit tracks after query has been completed. */
-      socket.emit("initial tracks", tracks);
-    });
-    isInitTracks = true;
-  } else {
-    socket.emit("initial tracks", tracks);
-  }
+  
+  /* ------ } Receiver ------ */
 });
