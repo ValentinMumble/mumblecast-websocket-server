@@ -71,12 +71,11 @@ io.sockets.on("connection", function(socket) {
 
   /* When a client submits a valid track. */
   socket.on("new track", function(data) {
-    var trackObject = {provider: data.provider, trackId: data.trackId};
-    db.query("INSERT INTO tracks SET ?", trackObject, function(err, info) {
+    db.query("INSERT INTO tracks SET ?", data, function(err, info) {
       if (!err) {
-        trackObject.id = info.insertId;
-        tracks.push(trackObject);
-        io.sockets.emit("new track", trackObject);
+        data.id = info.insertId;
+        tracks.push(data);
+        io.sockets.emit("track added", data);
       } else {
         console.log(err);
       }
@@ -88,7 +87,7 @@ io.sockets.on("connection", function(socket) {
     db.query("DELETE FROM tracks WHERE id=?", id, function(err, info) {
       if (!err) {
         deleteTrack(id);
-        io.sockets.emit("delete track", id);
+        io.sockets.emit("track deleted", id);
       } else {
         console.log(err);
       }
