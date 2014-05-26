@@ -19,7 +19,7 @@ var tracks = [];
 var isInitTracks = false;
 var clientsCount = 0;
 var receiver = null;
-var current = {index: null};
+var current = {index: null, paused: true};
 
 var indexOfTrack = function(id) {
   for (var i = 0; i < tracks.length; i++) {
@@ -37,8 +37,6 @@ var deleteTrack = function(id) {
 io.sockets.on("connection", function(socket) {
 
   clientsCount++;
-  io.sockets.emit("clients connected", clientsCount);
-  if (current.index != null) io.sockets.emit("track playing", current.index);
   
   /* Check if initial query/tracks are set. */
   if (!isInitTracks) {
@@ -60,6 +58,7 @@ io.sockets.on("connection", function(socket) {
     if (socket == receiver) {
       receiver = null;
       current.index = null;
+      current.pause = true;
       io.sockets.emit("receiver disconnected");
     } else {
       clientsCount--;
@@ -68,6 +67,14 @@ io.sockets.on("connection", function(socket) {
   });
   
   /* ------ Client { ------ */
+
+  socket.on("hello", function() {
+    io.sockets.emit("clients connected", clientsCount);
+    if (current.index != null) {
+      io.sockets.emit("track playing", current.index);
+      io.sockets.emit("paused", current.paused);
+    }
+  });
 
   /* When a client submits a valid track. */
   socket.on("new track", function(data) {
@@ -126,14 +133,10 @@ io.sockets.on("connection", function(socket) {
     receiver.broadcast.emit("clients connected", clientsCount);
   });
 
-  /* When the receiver notifies that the current track is paused. */
-  socket.on("paused", function() {
-    socket.broadcast.emit("paused");
-  });
-
-  /* When the receiver notifies that the current track is unpaused. */
-  socket.on("unpaused", function() {
-    socket.broadcast.emit("unpaused");
+  /* When the receiver notifies that the current track is paused or not. */
+  socket.on("paused", function(paused) {
+    current.paused = paused;
+    socket.broadcast.emit("paused", current.paused);
   });
   
   /* When the receiver notifies that this track is playing. */
