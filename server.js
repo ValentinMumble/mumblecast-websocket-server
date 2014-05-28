@@ -17,7 +17,7 @@ db.connect(function(err){
 
 var tracks = [];
 var isInitTracks = false;
-var clientsCount = 0;
+var clients = [];
 var receivers = [];
 var current = {index: null, paused: true};
 
@@ -36,8 +36,6 @@ var deleteTrack = function(id) {
 
 io.sockets.on("connection", function(socket) {
 
-  clientsCount++;
-  
   /* Check if initial query/tracks are set. */
   if (!isInitTracks) {
     /* Initial app start, run db query. */
@@ -64,15 +62,19 @@ io.sockets.on("connection", function(socket) {
         io.sockets.emit("paused", current.paused);
       }
     } else {
-      clientsCount--;
-      io.sockets.emit("clients connected", clientsCount);
+      index = clients.indexOf(socket.id);
+      if (index != -1) {
+        clients.splice(index, 1);
+        io.sockets.emit("clients connected", clients.length);
+      }
     }
   });
   
   /* ------ Client { ------ */
 
   socket.on("hello", function() {
-    io.sockets.emit("clients connected", clientsCount);
+    clients.push(socket.id);
+    io.sockets.emit("clients connected", clients.length);
     if (current.index != null) {
       /* Tell this socket what track is playing & if it's paused. */
       socket.emit("track playing", current.index);
@@ -122,7 +124,7 @@ io.sockets.on("connection", function(socket) {
   
   /* When a client wants to pause the current track. */
   socket.on("pause", function() {
-    /* We actually pause the track only if at least one receiver is connected. */
+    /* We actually pause/unpause the track only if at least one receiver is connected. */
     if (receivers.length > 0) {
       current.paused = !current.paused;
       /* Notify everyone that the current track is paused. */
@@ -139,9 +141,6 @@ io.sockets.on("connection", function(socket) {
     /* Store the receiver and broadcast to others that a new receiver is connected. */
     receivers.push(socket.id);
     socket.broadcast.emit("receiver connected");
-    /* Broadcast to others the number of clients. */
-    clientsCount--;
-    socket.broadcast.emit("clients connected", clientsCount);
   });
 
   /* When a receiver notifies that this track is playing. */
