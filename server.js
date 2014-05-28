@@ -35,7 +35,7 @@ var deleteTrack = function(id) {
 };
 
 var emitToReceivers = function(event, data) {
-  receivers.forEach(function(id)) {
+  receivers.forEach(function(id) {
     io.sockets.socket(id).emit(event, data);
   });
 };
