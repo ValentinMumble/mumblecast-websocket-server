@@ -142,7 +142,7 @@ io.sockets.on("connection", function(socket) {
   socket.on("track playing", function(id) {
     current.index = id;
     io.sockets.emit("track playing", current.index);
-    curent.paused = false;
+    current.paused = false;
     io.sockets.emit("paused", current.paused);
   });
   
