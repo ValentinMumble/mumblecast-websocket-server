@@ -34,12 +34,6 @@ var deleteTrack = function(id) {
   return i;
 };
 
-var emitToReceivers = function(event, data) {
-  receivers.forEach(function(id) {
-    io.sockets.socket(id).emit(event, data);
-  });
-};
-
 io.sockets.on("connection", function(socket) {
 
   clientsCount++;
@@ -113,17 +107,17 @@ io.sockets.on("connection", function(socket) {
 
   /* When a client wants to play a track. */
   socket.on("play track", function(id) {
-    emitToReceivers("play track", id);
+    io.sockets.emit("play track", id);
   });
   
   /* When a client wants to play the next track. */
   socket.on("next", function() {
-    emitToReceivers("next");
+    io.sockets.emit("next");
   });
   
   /* When a client wants to play the previous track. */
   socket.on("previous", function() {
-    emitToReceivers("previous");
+    io.sockets.emit("previous");
   });
   
   /* When a client wants to pause the current track. */
