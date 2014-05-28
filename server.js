@@ -122,8 +122,12 @@ io.sockets.on("connection", function(socket) {
   
   /* When a client wants to pause the current track. */
   socket.on("pause", function() {
-    current.paused = !current.paused;
-    io.sockets.emit("paused", current.paused);
+    /* We actually pause the track only if at least one receiver is connected. */
+    if (receivers.length > 0) {
+      current.paused = !current.paused;
+      /* Notify everyone that the current track is paused. */
+      io.sockets.emit("paused", current.paused);
+    }
   });
   
   /* ------ } Client ------ */
@@ -132,18 +136,22 @@ io.sockets.on("connection", function(socket) {
   
   /* When a receiver introduces itself. */
   socket.on("i am receiver", function() {
+    /* Store the receiver and broadcast to others that a new receiver is connected. */
     receivers.push(socket.id);
+    socket.broadcast.emit("receiver connected");
+    /* Broadcast to others the number of clients. */
     clientsCount--;
-    io.sockets.emit("receiver connected");
-    io.sockets.emit("clients connected", clientsCount);
+    socket.broadcast.emit("clients connected", clientsCount);
   });
 
   /* When a receiver notifies that this track is playing. */
   socket.on("track playing", function(id) {
+    /* Store the current index and brodcast to others that this track is playing. */
     current.index = id;
-    io.sockets.emit("track playing", current.index);
+    socket.broadcast.emit("track playing", current.index);
+    /* Broadcast to others that the track is not paused. */
     current.paused = false;
-    io.sockets.emit("paused", current.paused);
+    socket.broadcast.emit("paused", current.paused);
   });
   
   /* ------ } Receiver ------ */
