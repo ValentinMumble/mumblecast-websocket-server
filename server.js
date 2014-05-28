@@ -35,9 +35,9 @@ var deleteTrack = function(id) {
 };
 
 var emitToReceivers = function(event, data) {
-  for (var i = 0; i < receivers.length; i++) {
-    receivers[i].emit(event, data);
-  }
+  receivers.forEach(function(id)) {
+    io.sockets.socket(id).emit(event, data);
+  });
 };
 
 io.sockets.on("connection", function(socket) {
@@ -61,9 +61,14 @@ io.sockets.on("connection", function(socket) {
   
   /* When a socket disconnects. */
   socket.on("disconnect", function() {
-    console.log(receivers.indexOf(socket));
-    if (receivers.indexOf(socket)) {
-      io.sockets.emit("receiver disconnected");
+    var index = receivers.indexOf(socket.id);
+    if (index != -1) {
+      receivers.splice(index, 1);
+      if (receivers.length == 0) {
+        io.sockets.emit("receiver disconnected");
+        current.paused = true;
+        io.sockets.emit("paused", current.paused);
+      }
     } else {
       clientsCount--;
       io.sockets.emit("clients connected", clientsCount);
@@ -75,8 +80,9 @@ io.sockets.on("connection", function(socket) {
   socket.on("hello", function() {
     io.sockets.emit("clients connected", clientsCount);
     if (current.index != null) {
-      io.sockets.emit("track playing", current.index);
-      io.sockets.emit("paused", current.paused);
+      /* Tell this socket what track is playing & if it's paused. */
+      socket.emit("track playing", current.index);
+      socket.emit("paused", current.paused);
     }
   });
 
@@ -109,11 +115,6 @@ io.sockets.on("connection", function(socket) {
   socket.on("play track", function(id) {
     emitToReceivers("play track", id);
   });
-
-  /* When a client wants to pause the current track. */
-  socket.on("pause", function() {
-    emitToReceivers("pause");
-  });
   
   /* When a client wants to play the next track. */
   socket.on("next", function() {
@@ -125,28 +126,30 @@ io.sockets.on("connection", function(socket) {
     emitToReceivers("previous");
   });
   
+  /* When a client wants to pause the current track. */
+  socket.on("pause", function() {
+    current.paused = !current.paused;
+    io.sockets.emit("paused", current.paused);
+  });
+  
   /* ------ } Client ------ */
   
   /* ------ Receiver { ------ */
   
   /* When a receiver introduces itself. */
   socket.on("i am receiver", function() {
-    receivers.push(socket);
+    receivers.push(socket.id);
     clientsCount--;
     io.sockets.emit("receiver connected");
     io.sockets.emit("clients connected", clientsCount);
   });
 
-  /* When a receiver notifies that the current track is paused or not. */
-  socket.on("paused", function(paused) {
-    current.paused = paused;
-    socket.broadcast.emit("paused", current.paused);
-  });
-  
   /* When a receiver notifies that this track is playing. */
   socket.on("track playing", function(id) {
     current.index = id;
-    socket.broadcast.emit("track playing", current.index);
+    io.sockets.emit("track playing", current.index);
+    curent.paused = false;
+    io.sockets.emit("paused", current.paused);
   });
   
   /* ------ } Receiver ------ */
